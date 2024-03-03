@@ -8,7 +8,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 def download_financials_excel(companies: list, exchange="TRY"):
     """
-    Downloads all of the possible annual financial reports for all quarter periods
+    Downloads all the possible annual financial reports for all quarter periods
     :param companies: A list of including the company codes that you want to create financial reports of them
     :param exchange: TRY or USD for which one you want to see the financials with currency
     :return: A report that customized for your parameters.
@@ -102,16 +102,13 @@ def process_data(company, exchange):
     headers_difference = len(headers) - len(data3.columns)
     if headers_difference != 0:
         del headers[-headers_difference:]
-
-
     data3.set_axis(headers, axis=1, inplace=True)
     data3 = data3.T
     data3.reset_index(drop=True, inplace=True)
     data3.columns = data3.iloc[0]
     data3.set_index(pd.Index(headers), drop=True, inplace=True)
     data3.drop(data3.index[0], inplace=True)
-    #data3.index.name = "Bilanço Dönemleri" An interesting error, I will check it later.
-
+    # data3.index.name = "Bilanço Dönemleri" An interesting error, I will check it later.
     data3.to_excel("/Users/mehmetaliduzgun/Desktop/Data Science/Financial Reports/{}.xlsx".format(company), index=False)
     company_statistics = data3.describe().T
     plt.figure(figsize=(55, 15))
@@ -120,9 +117,6 @@ def process_data(company, exchange):
     data3_scaled_df = pd.DataFrame(data3_scaled)
     sns.scatterplot(data=data3, x=data3.index.values, y=data3_scaled_df[0], s=50)
     plt.savefig('chart_{}.png'.format(company))
-
-
-
     return data3, company_statistics
 
 
