@@ -1,18 +1,24 @@
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
 
 
-companies = ["FROTO"]
-is_yatirim_url = 'https://www.isyatirim.com.tr/tr-tr/analiz/hisse/Sayfalar/sirket-karti.aspx?hisse=FROTO'
-r = requests.get(is_yatirim_url)
-s = BeautifulSoup(r.text, 'html.parser')
-s1 = s.find('select', id='ddlAddCompare')
-c1 = s1.findChild('optgroup').findAll('option')
-#for company in c1:  if you want to get all of the companies you can delete the hashtag and companies list will contain all of them
-#   companies.append(company.string)
-for i in companies:
-    company = i
+def download_financials_excel(companies: list, exchange="TRY"):
+    """
+    Downloads all of the possible annual financial reports for all quarter periods
+    :param companies: A list of including the company codes that you want to create financial reports of them
+    :param exchange: TRY or USD for which one you want to see the financials with currency
+    :return: A report that customized for your parameters.
+    """
+    for company in companies:
+        data3, company_statistics = process_data(company, exchange)
+        create_report(company, data3, company_statistics)
+
+
+def process_data(company, exchange):
     dates = []
     years = []
     periods = []
@@ -32,7 +38,7 @@ for i in companies:
         if len(dates) >= 4:
             parameters = (
                 ('companyCode', company),
-                ('exchange', 'TRY'),
+                ('exchange', exchange),
                 ('financialGroup', group),
                 ('year1', years[0]),
                 ('period1', periods[0]),
@@ -48,14 +54,15 @@ for i in companies:
             r2 = requests.get(url2, params=parameters).json()["value"]
             data = pd.DataFrame.from_dict(r2)
             data.drop(columns=["itemCode", "itemDescEng"], inplace=True)
-        else: continue
+        else:
+            return None, None
     except AttributeError:
-        continue
+        return None, None
 
     del dates[0:4]
     all_datas = [data]
 
-    for i in range(0, int(len(dates)+1)):
+    for i in range(0, int(len(dates) + 1)):
         if len(dates) == len(years):
             del dates[0:4]
         else:
@@ -66,10 +73,10 @@ for i in companies:
                 years.append(date[0])
                 periods.append((date[1]))
 
-            if len(dates)>=4:
+            if len(dates) >= 4:
                 parameters2 = (
                     ('companyCode', company),
-                    ('exchange', 'TRY'),
+                    ('exchange', exchange),
                     ('financialGroup', group),
                     ('year1', years[0]),
                     ('period1', periods[0]),
@@ -84,7 +91,7 @@ for i in companies:
                 r3 = requests.get(url2, params=parameters2).json()["value"]
                 data2 = pd.DataFrame.from_dict(r3)
                 try:
-                    data2.drop(columns=["itemCode","itemDescTr", "itemDescEng"], inplace=True)
+                    data2.drop(columns=["itemCode", "itemDescTr", "itemDescEng"], inplace=True)
                     all_datas.append(data2)
                 except KeyError:
                     continue
@@ -92,8 +99,58 @@ for i in companies:
     headers = ["Bilanço"]
     for date in children_dates:
         headers.append(date.string)
-    headers_difference = len(headers)-len(data3.columns)
+    headers_difference = len(headers) - len(data3.columns)
     if headers_difference != 0:
         del headers[-headers_difference:]
+
+
     data3.set_axis(headers, axis=1, inplace=True)
+    data3 = data3.T
+    data3.reset_index(drop=True, inplace=True)
+    data3.columns = data3.iloc[0]
+    data3.set_index(pd.Index(headers), drop=True, inplace=True)
+    data3.drop(data3.index[0], inplace=True)
+    #data3.index.name = "Bilanço Dönemleri" An interesting error, I will check it later.
+
     data3.to_excel("/Users/mehmetaliduzgun/Desktop/Data Science/Financial Reports/{}.xlsx".format(company), index=False)
+    company_statistics = data3.describe().T
+    plt.figure(figsize=(55, 15))
+    scaler = MinMaxScaler()
+    data3_scaled = scaler.fit_transform(data3[['Dönen Varlıklar']])
+    data3_scaled_df = pd.DataFrame(data3_scaled)
+    sns.scatterplot(data=data3, x=data3.index.values, y=data3_scaled_df[0], s=50)
+    plt.savefig('chart_{}.png'.format(company))
+
+
+
+    return data3, company_statistics
+
+
+def create_report(company, data3, company_statistics):
+    page_title = "Custom Report"
+    report_title = "{} Company Financial Report".format(company)
+    text = "Welcome to our report. For more customizable reports, you can follow us!"
+    prices_text = "BIST 100 {} Company Historical Financial Reports by Periods".format(company)
+    stats_text = "BIST 100 {} Company Historical Financials Summary Statistics".format(company)
+
+    html = f"""
+        <html>
+            <head>
+                <title>{page_title}</title>
+            </head>
+            <body>
+                <h1>{report_title}</h1>
+                <p>{text}</p>
+                <img src = 'chart_{company}.png'>
+                <h2>{prices_text}</h2>
+                {data3.tail(3).to_html()}
+                <h2>{stats_text}</h2>
+                {company_statistics.to_html()}
+            </body>
+        </html>
+        """
+    with open('report.html', 'w') as file:
+        file.write(html)
+
+
+download_financials_excel(["FROTO"], "TRY")
