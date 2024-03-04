@@ -15,7 +15,7 @@ def download_financials_excel(companies: list, exchange="TRY"):
     """
     for company in companies:
         data3, company_statistics = process_data(company, exchange)
-        create_report(company, data3, company_statistics)
+        create_report(company, data3, company_statistics, exchange)
 
 
 def process_data(company, exchange):
@@ -111,18 +111,18 @@ def process_data(company, exchange):
     # data3.index.name = "Bilanço Dönemleri" An interesting error, I will check it later.
     data3.to_excel("/Users/mehmetaliduzgun/Desktop/Data Science/Financial Reports/{}.xlsx".format(company), index=False)
     company_statistics = data3.describe().T
-    plt.figure(figsize=(55, 15))
+    plt.figure(figsize=(55, 10))
     scaler = MinMaxScaler()
-    data3_scaled = scaler.fit_transform(data3[['Dönen Varlıklar']])
+    data3_scaled = scaler.fit_transform(data3[data3.columns[0]].values.reshape(-1, 1))
     data3_scaled_df = pd.DataFrame(data3_scaled)
     sns.scatterplot(data=data3, x=data3.index.values, y=data3_scaled_df[0], s=50)
-    plt.savefig('chart_{}.png'.format(company))
+    plt.savefig('chart_{}_{}.png'.format(company, exchange))
     return data3, company_statistics
 
 
-def create_report(company, data3, company_statistics):
+def create_report(company, data3, company_statistics, exchange):
     page_title = "Custom Report"
-    report_title = "{} Company Financial Report".format(company)
+    report_title = "{} Company Financial Report for {} Exchange".format(company, exchange)
     text = "Welcome to our report. For more customizable reports, you can follow us!"
     prices_text = "BIST 100 {} Company Historical Financial Reports by Periods".format(company)
     stats_text = "BIST 100 {} Company Historical Financials Summary Statistics".format(company)
@@ -143,8 +143,10 @@ def create_report(company, data3, company_statistics):
             </body>
         </html>
         """
-    with open('report.html', 'w') as file:
+
+    with open('{}_{}_report.html'.format(company, exchange), 'w') as file:
         file.write(html)
+
 
 
 download_financials_excel(["FROTO"], "TRY")
