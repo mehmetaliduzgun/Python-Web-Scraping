@@ -135,9 +135,9 @@ def create_report(company, data3, company_statistics, exchange):
             <body>
                 <h1>{report_title}</h1>
                 <p>{text}</p>
-                <img src = 'chart_{company}.png'>
+                <img src = 'chart_{company}_{exchange}.png'>
                 <h2>{prices_text}</h2>
-                {data3.tail(3).to_html()}
+                {data3.iloc[0:data3.shape[0]-1, 0:5].to_html()}
                 <h2>{stats_text}</h2>
                 {company_statistics.to_html()}
             </body>
