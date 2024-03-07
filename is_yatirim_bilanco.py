@@ -116,6 +116,9 @@ def process_data(company, exchange):
     data3_scaled = scaler.fit_transform(data3[data3.columns[0]].values.reshape(-1, 1))
     data3_scaled_df = pd.DataFrame(data3_scaled)
     sns.scatterplot(data=data3, x=data3.index.values, y=data3_scaled_df[0], s=50)
+    plt.xlabel("Periods (Quarters)")
+    plt.ylabel("Current Assets")
+    plt.title("Current Assets of {} Company in {} Currency by Quarterly Periods".format(company, exchange))
     plt.savefig('chart_{}_{}.png'.format(company, exchange))
     return data3, company_statistics
 
